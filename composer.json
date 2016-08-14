@@ -11,7 +11,7 @@
         }
     ],
     "autoload": {
-        "files": ["vendor/brexis/phpsnmp/snmp.php"]
+        "files": ["snmp.php"]
     },
     "minimum-stability": "dev",
     "require": {
