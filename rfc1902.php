@@ -40,7 +40,7 @@ require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'rfc1155.php');
 // $ASN_TAG_DICT[0x41] = 'rfc1902_Counter32';
 // $ASN_TAG_DICT[0x42] = 'rfc1902_Guage32';
 $ASN_TAG_DICT[0x46] = 'rfc1902_Counter64';
-
+$GLOBALS["ASN_TAG_DICT"] = $ASN_TAG_DICT;
 /**
  * Integer32
  *

@@ -118,6 +118,7 @@ $ASN_TAG_DICT[0x41] = 'rfc1155_Counter';
 $ASN_TAG_DICT[0x42] = 'rfc1155_Guage';
 $ASN_TAG_DICT[0x43] = 'rfc1155_TimeTicks';
 $ASN_TAG_DICT[0x44] = 'rfc1155_Opaque';
+$GLOBALS["ASN_TAG_DICT"] = $ASN_TAG_DICT;
 
 /**
  * Asn1Objects
@@ -226,6 +227,7 @@ class rfc1155_Asn1Object
     $objects = array();
     while(strlen($stream) > 0)
     {
+
       list($tag, $stream) = $this->decodeTag($stream);
       list($length, $stream) = $this->decodeLength($stream);
 
@@ -233,6 +235,8 @@ class rfc1155_Asn1Object
       $stream = substr($stream, $length);
 
       global $ASN_TAG_DICT;
+      var_dump($tag);
+      echo '<br>';
       if(isset($ASN_TAG_DICT[$tag]))
       {
         $decoder = $ASN_TAG_DICT[$tag];

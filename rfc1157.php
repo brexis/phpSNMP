@@ -43,7 +43,7 @@ $ASN_TAG_DICT[0xa1] = 'rfc1157_GetNext';
 $ASN_TAG_DICT[0xa2] = 'rfc1157_Response';
 $ASN_TAG_DICT[0xa3] = 'rfc1157_Set';
 $ASN_TAG_DICT[0xa4] = 'rfc1157_TrapPDU';
-
+$GLOBALS["ASN_TAG_DICT"] = $ASN_TAG_DICT;
 /**
  * Error Status
  *

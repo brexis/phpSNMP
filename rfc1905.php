@@ -46,6 +46,7 @@ $ASN_TAG_DICT[0xa5] = 'rfc1905_GetBulk';
 $ASN_TAG_DICT[0xa6] = 'rfc1905_Inform';
 $ASN_TAG_DICT[0xa7] = 'rfc1905_TrapV2';
 $ASN_TAG_DICT[0xa8] = 'rfc1905_Report';
+$GLOBALS["ASN_TAG_DICT"] = $ASN_TAG_DICT;
 
 // ucd-snmp returns context-specific values at time
 define('ASN_TAG_NO_SUCH_OBJECT',	0x80);
