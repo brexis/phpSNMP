@@ -52,20 +52,14 @@ $ASN_TAG_DICT[0xa4] = 'rfc1157_TrapPDU';
  */
 class rfc1157_ErrorStatus extends rfc1155_Integer
 {
-  var $errString;
-  var $errNum;
-
  /**
   * Constructor
   *
   * @param integer $value
   */
-  function rfc1157_ErrorStatus($value)
+  public function __construct($value)
   {
-    parent::rfc1155_Integer($value);
-    $this->errString = array('No Error', 'Response message would have been too large', 'There is no such variable name in this MIB',
-                             'The value given has the wrong type', 'Object is Read Only', 'An unknown error occurred');
-    $this->errNum = array('noError'=>0, 'tooBig'=>1, 'noSuchName'=>2, 'badValue'=>3, 'readOnly'=>4, 'genErr'=>5);
+    parent::__construct($value);
   }
 
  /**
@@ -73,19 +67,17 @@ class rfc1157_ErrorStatus extends rfc1155_Integer
   *
   * @return string value of this object
   */
-  function toString()
+  public function toString()
   {
-    return $this->errString[$this->value];
-  }
-
- /**
-  * Get Error
-  *
-  * @return string
-  */
-  function get_error()
-  {
-    return $this->errString[$this->value];
+    switch($this->value)
+    {
+      case 0: return 'No Error';
+      case 1: return 'Response message would have been too large';
+      case 2: return 'There is no such variable name in this MIB';
+      case 3: return 'The value given has the wrong type';
+      case 4: return 'Object is Read Only';
+    }
+    return 'An unknown error occurred';
   }
 }
 
@@ -105,15 +97,13 @@ class rfc1157_VarBind extends rfc1155_Sequence
   * @param rfc1155_ObjectID $name
   * @param rfc1155_Asn1Object $value
   */
-  function rfc1157_VarBind($name=NULL, $value=NULL)
+  public function __construct($name=NULL, $value=NULL)
   {
     if($name && !is_a($name, 'rfc1155_ObjectID'))
       trigger_error('name must be an rfc1155_ObjectID', E_USER_WARNING);
     if($value && !is_a($value, 'rfc1155_Asn1Object'))
       trigger_error('value must be an rfc1155_Asn1Object', E_USER_WARNING);
-    parent::rfc1155_Sequence(array($name, $value));
-    $this->objectID = $name;
-    $this->objectValue = $value;
+    parent::__construct(array($name, $value));
   }
 }
 
@@ -132,9 +122,9 @@ class rfc1157_VarBindList extends rfc1155_SequenceOf
   *
   * @param array $value of rfc1157_VarBind
   */
-  function rfc1157_VarBindList($value=array())
+  public function __construct($value=array())
   {
-    parent::rfc1155_SequenceOf('rfc1157_VarBind', $value);
+    parent::__construct('rfc1157_VarBind', $value);
   }
 }
 
@@ -148,24 +138,54 @@ class rfc1157_VarBindList extends rfc1155_SequenceOf
  */
 class rfc1157_Message extends rfc1155_Sequence
 {
-  var $version;
-  var $community;
-  var $data;
-
  /**
   * Constructor
   *
   * @param integer $version
   * @param string $community
-  * @param mixed $data
+  * @param rfc1157_PDU $pdu
   */
-  function rfc1157_Message($version=0, $community='public', $data=NULL)
+  public function __construct($version=0, $community='public', $pdu=NULL)
   {
-    parent::rfc1155_Sequence();
-    $this->version = new rfc1155_Integer($version);
-    $this->community = new rfc1155_OctetString($community);
-    $this->data = $data;
-    $this->value = array($this->version, $this->community, $this->data);
+    parent::__construct();
+    if(is_null($pdu)) $pdu = new rfc1157_PDU();
+    $this->value = array(new rfc1155_Integer($version), new rfc1155_OctetString($community), $pdu);
+  }
+
+ /**
+  * Get/Set version
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function version($value=NULL)
+  {
+    if(!is_null($value)) $this->value[0] = new rfc1155_Integer($value);
+    return $this->value[0]->value;
+  }
+
+ /**
+  * Get/Set community
+  *
+  * @param string $value
+  * @return string
+  */
+  public function community($value=NULL)
+  {
+    if(!is_null($value)) $this->value[1] = new rfc1155_OctetString($value);
+    return $this->value[1]->value;
+  }
+
+ /**
+  * Get/Set PDU
+  *
+  * @param rfc1157_PDU $value
+  * @return rfc1157_PDU
+  */
+  public function pdu($value=NULL)
+  {
+    if(!is_null($value)) $this->value[2] = $value;
+    return $this->value[2];
   }
 
  /**
@@ -176,17 +196,14 @@ class rfc1157_Message extends rfc1155_Sequence
   * @param string $stream
   * @return rfc1157_Message
   */
-  function decode($stream)
+  public function decode($stream)
   {
-    $objectList = parent::decode($stream);
-    if(count($objectList) != 1)
+    $this->value = parent::decode($stream);
+    if(count($this->value) != 1)
       trigger_error('Malformed Message: More than one object decoded.', E_USER_WARNING);
-    if(count($objectList[0]->value) != 3)
-      trigger_error('Malformed Message: Incorrect sequence length ' . count($objectList[0]->value), E_USER_WARNING);
-
-    $this->version = $objectList[0]->value[0];
-    $this->community = $objectList[0]->value[1];
-    $this->data = $objectList[0]->value[2];
+    $this->value = $this->value[0]->value;
+    if(count($this->value) != 3)
+      trigger_error('Malformed Message: Incorrect sequence length ' . count($this->value[0]->value), E_USER_WARNING);
     return $this;
   }
 }
@@ -199,14 +216,8 @@ class rfc1157_Message extends rfc1155_Sequence
  * @package phpSNMP
  * @subpackage rfc1157
  */
-class rfc1157_PDU extends rfc1155_Sequence
+class rfc1157_PDU extends rfc1155_Sequence // Base class for a non-trap PDU
 {
-  // Base class for a non-trap PDU
-  var $requestID;
-  var $errorStatus;
-  var $errorIndex;
-  var $varBindList;
-
  /**
   * Constructor
   *
@@ -215,20 +226,73 @@ class rfc1157_PDU extends rfc1155_Sequence
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1157_PDU($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
     /* this allows you to create a new object with no arguments, arguments of the class ultimately desired (eg Integer)
        or, to make like easier, it will convert basic strings and ints into the ultimately desired objects. */
 
-    parent::rfc1155_Sequence();
+    parent::__construct();
     $this->asnTagClass = ASN_TAG_CLASS_CONTEXT;
+    $this->value = array(new rfc1155_Integer($requestID), new rfc1157_ErrorStatus($errorStatus),
+                         new rfc1155_Integer($errorIndex), new rfc1157_VarBindList($varBindList));
+  }
 
-    $this->requestID = new rfc1155_Integer($requestID);
-    $this->errorStatus = new rfc1157_ErrorStatus($errorStatus);
-    $this->errorIndex = new rfc1155_Integer($errorIndex);
-    $this->varBindList = new rfc1157_VarBindList($varBindList);
+ /**
+  * Get/Set Request ID
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function requestID($value=NULL)
+  {
+    if(!is_null($value)) $this->value[0] = new rfc1155_Integer($value);
+    return $this->value[0]->value;
+  }
 
-    $this->value = array($this->requestID, $this->errorStatus, $this->errorIndex, $this->varBindList);
+ /**
+  * Get/Set Error Status
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function errorStatus($value=NULL)
+  {
+    if(!is_null($value)) $this->value[1] = new rfc1157_ErrorStatus($value);
+    return $this->value[1]->value;
+  }
+
+ /**
+  * Get Error String
+  *
+  * @return string
+  */
+  public function errorString()
+  {
+    return $this->value[1]->toString();
+  }
+
+ /**
+  * Get/Set Error Index
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function errorIndex($value=NULL)
+  {
+    if(!is_null($value)) $this->value[2] = new rfc1155_Integer($value);
+    return $this->value[2]->value;
+  }
+
+ /**
+  * Get/Set Var Bind List
+  *
+  * @param rfc1157_VarBindList $value
+  * @return rfc1157_VarBindList
+  */
+  public function varBindList($value=NULL)
+  {
+    if(!is_null($value)) $this->value[3] = new rfc1157_VarBindList($value);
+    return $this->value[3]->value;
   }
 
  /**
@@ -237,18 +301,15 @@ class rfc1157_PDU extends rfc1155_Sequence
   * @param string $stream
   * @return rfc1157_PDU
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
-    $objectList = parent::decodeContents($stream);
-
+    parent::decodeContents($stream);
     if(count($this->value) != 4)
       trigger_error('Malformed PDU: Incorrect length ' . count($this->value), E_USER_WARNING);
 
-    // Build things with the correct type
-    $myVarList = array();
-    foreach($objectList->value[3]->value as $item)
-      $myVarList[] = new rfc1157_VarBind($item->value[0], $item->value[1]);
-    return new rfc1157_PDU(intval($objectList->value[0]->value), intval($objectList->value[1]->value), intval($objectList->value[2]->value), $myVarList);
+    $this->value[1] = new rfc1157_ErrorStatus($this->value[1]->value);
+    $this->value[3] = new rfc1157_VarBindList($this->value[3]->value);
+    return $this;
   }
 }
 
@@ -270,9 +331,9 @@ class rfc1157_Get extends rfc1157_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1157_Get($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1157_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_GET;
   }
 }
@@ -295,9 +356,9 @@ class rfc1157_GetNext extends rfc1157_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1157_GetNext($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1157_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_GETNEXT;
   }
 }
@@ -320,9 +381,9 @@ class rfc1157_Response extends rfc1157_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1157_Response($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1157_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_GET;
   }
 }
@@ -345,9 +406,9 @@ class rfc1157_Set extends rfc1157_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1157_Set($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1157_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_SET;
   }
 }
@@ -375,9 +436,9 @@ class rfc1157_GenericTrap extends rfc1155_Integer
   *
   * @param integer $value
   */
-  function rfc1157_GenericTrap($value)
+  public function __construct($value)
   {
-    parent::rfc1155_Integer($value);
+    parent::__construct($value);
   }
 }
 
@@ -389,36 +450,96 @@ class rfc1157_GenericTrap extends rfc1155_Integer
  */
 class rfc1157_TrapPDU extends rfc1155_Sequence
 {
-  var $enterprise;
-  var $agentAddr;
-  var $genericTrap;
-  var $specificTrap;
-  var $varBindList;
-
  /**
   * Constructor
   *
-  * @param rfc1155_ObjectID $enterprise
-  * @param rfc1155_NetworkAddress $agentAddr
-  * @param rfc1157_GenericTrap $genericTrap
-  * @param rfc1155_Integer $specificTrap
-  * @param rfc1155_TimeTicks $timestamp
+  * @param string $enterprise
+  * @param string $agentAddr
+  * @param integer $genericTrap
+  * @param integer $specificTrap
+  * @param integer $timestamp
   * @param array $varBindList
   */
-  function rfc1157_TrapPDU($enterprise=NULL, $agentAddr=NULL, $genericTrap=NULL, $specificTrap=NULL, $timestamp=NULL, $varBindList=NULL)
+  public function __construct($enterprise=NULL, $agentAddr=NULL, $genericTrap=NULL, $specificTrap=NULL, $timestamp=NULL, $varBindList=array())
   {
-    parent::rfc1155_Sequence();
+    parent::__construct();
     $this->asnTagClass = ASN_TAG_CLASS_CONTEXT;
     $this->asnTagNumber = ASN_TAG_TRAP;
+    $this->value = array(new rfc1155_ObjectID($enterprise), new rfc1155_NetworkAddress($agentAddr),
+                         new rfc1157_GenericTrap($genericTrap), new rfc1155_Integer($specificTrap),
+                         new rfc1155_TimeTicks($timestamp), new rfc1157_VarBindList($varBindList));
+  }
 
-    $this->enterprise = $enterprise;					// ObjectID
-    $this->agentAddr = $agentAddr;					// NetworkAddress
-    $this->genericTrap = $genericTrap;					// GenericTrap
-    $this->specificTrap = $specificTrap;				// Integer
-    $this->timestamp = $timestamp;					// TimeTicks
-    $this->varBindList = new rfc1157_VarBindList($varBindList);		// VarBindList
+ /**
+  * Get/Set Enterprise OID
+  *
+  * @param string $value
+  * @return string
+  */
+  public function enterprise($value=NULL)
+  {
+    if(!is_null($value)) $this->value[0] = new rfc1155_ObjectID($value);
+    return $this->value[0]->value;
+  }
 
-    $this->value = array($this->enterprise, $this->agentAddr, $this->genericTrap, $this->specificTrap, $this->timestamp, $this->varBindList);
+ /**
+  * Get/Set Agent Address
+  *
+  * @param string $value
+  * @return string
+  */
+  public function agentAddr($value=NULL)
+  {
+    if(!is_null($value)) $this->value[1] = new rfc1155_NetworkAddress($value);
+    return $this->value[1]->value;
+  }
+
+ /**
+  * Get/Set Generic Trap
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function genericTrap($value=NULL)
+  {
+    if(!is_null($value)) $this->value[2]->value = $value;
+    return $this->value[2]->value;
+  }
+
+ /**
+  * Get/Set Specific Trap
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function specificTrap($value=NULL)
+  {
+    if(!is_null($value)) $this->value[3]->value = $value;
+    return $this->value[3]->value;
+  }
+
+ /**
+  * Get/Set Timestamp
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function timestamp($value=NULL)
+  {
+    if(!is_null($value)) $this->value[4]->value = $value;
+    return $this->value[4]->value;
+  }
+
+ /**
+  * Get/Set Var Bind List
+  *
+  * @param rfc1157_VarBindList $value
+  * @return rfc1157_VarBindList
+  */
+  public function VarBindList($value=NULL)
+  {
+    if(!is_null($value)) $this->value[5] = $value;
+    return $this->value[5];
   }
 
  /**
@@ -427,18 +548,16 @@ class rfc1157_TrapPDU extends rfc1155_Sequence
   * @param string $stream
   * @return rfc1157_TrapPDU
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
-    $objectList = parent::decodeContents($stream);
+    parent::decodeContents($stream);
     if(count($this->value) != 6)
       trigger_error('Malformed TrapPDU: Incorrect length ' . count($this->value), E_USER_WARNING);
 
-    // Build things with the correct type
-    $myVarList = new rfc1157_VarBindList();
-    foreach($objectList[5] as $item)
-      $myVarList->value[] = new rfc1157_VarBind($item[0], $item[1]);
+    $this->value[1] = new rfc1155_NetworkAddress($this->value[1]->value);
+    $this->value[5] = new rfc1157_VarBindList($this->value[5]->value);
 
-    return new rfc1157_TrapPDU($objectList[0], $objectList[1], intval($objectList[2]), intval($objectList[3]), $objectList[4], $myVarList);
+    return $this;
   }
 }
 ?>

@@ -58,11 +58,13 @@ class snmp
  /**
   * Constructor
   */
-  function snmp()
+  public function __construct()
   {
-    $this->default_security = array('community'=>'public', 'v3_flags'=>SNMP_NOAUTH_NOPRIV, 'v3_security_model'=>SNMP_SECURITY_USM,
-                                    'v3_engine_id'=>'', 'v3_engine_boots'=>0, 'v3_engine_time'=>0, 'v3_user'=>'', 'v3_auth'=>'',
-                                    'v3_priv'=>'', 'v3_context_engine_id'=>'', 'v3_context_name'=>'');
+    $this->default_security = array('community'=>'public', 'v3_max_size'=>65507, 'v3_flags'=>SNMP_AUTH_NOPRIV,
+                                    'v3_security_model'=>SNMP_SECURITY_USM, 'v3_engine_id'=>'', 'v3_engine_boots'=>0,
+                                    'v3_engine_time'=>0, 'v3_user'=>'', 'v3_auth'=>'', 'v3_priv'=>'',
+                                    'v3_context_engine_id'=>'', 'v3_context_name'=>'', 'v3_hash'=>'md5',
+                                    'v3_crypt_algorithm'=>'des', 'v3_crypt_mode'=>'cbc');
   }
 
  /**
@@ -73,14 +75,14 @@ class snmp
   * @param array $security parameters
   * @return array in the format $oid=>$value
   */
-  function get($host, $target, $security=NULL)
+  public function get($host, $target, $security=NULL)
   {
     if(is_array($target))
       $varbind = $target;
     else
       $varbind = $this->build_varbind($target);
 
-    $ret = $this->exec($host, 'get', $this->build_packet($varbind, $security, 'get'), $security);
+    $ret = $this->exec($host, 'get', $varbind, $security);
 
     return array_shift($ret);
   }
@@ -93,13 +95,13 @@ class snmp
   * @param array $security parameters
   * @return array in the format $ip=>array($oid=>$value)
   */
-  function multi_get($hosts, $target, $security=NULL)
+  public function multi_get($hosts, $target, $security=NULL)
   {
     if(is_array($target))
       $varbind = $target;
     else
       $varbind = $this->build_varbind($target);
-    return $this->exec($hosts, 'get', $this->build_packet($varbind, $security, 'get'), $security);
+    return $this->exec($hosts, 'get', $varbind, $security);
   }
 
  /**
@@ -110,11 +112,9 @@ class snmp
   * @param array $security parameters
   * @return array in the format $oid=>$value
   */
-  function bulk_get($host, $oids, $security=NULL)
+  public function bulk_get($host, $oids, $security=NULL)
   {
-    $varbind = $this->build_varbind($oids);
-
-    $ret = $this->exec($host, 'getbulk', $this->build_packet($varbind, $security, 'getbulk'), $security);
+    $ret = $this->exec($host, 'getbulk', $this->build_varbind($oids), $security);
 
     return array_shift($ret);
   }
@@ -127,10 +127,9 @@ class snmp
   * @param array $security parameters
   * @return array in the format $oid=>$value
   */
-  function multi_bulk_get($hosts, $oids, $security=NULL)
+  public function multi_bulk_get($hosts, $oids, $security=NULL)
   {
-    $varbind = $this->build_varbind($oids);
-    return $this->exec($hosts, 'getbulk', $this->build_packet($varbind, $security, 'getbulk'), $security);
+    return $this->exec($hosts, 'getbulk', $this->build_varbind($oids), $security);
   }
 
  /**
@@ -141,11 +140,9 @@ class snmp
   * @param array $security parameters
   * @return array in the format $ip=>array($oid=>$value)
   */
-  function walk($host, $oid, $security=NULL)
+  public function walk($host, $oid, $security=NULL)
   {
-    $varbind = $this->build_varbind($oid);
-
-    $ret = $this->exec($host, 'getnext', $this->build_packet($varbind, $security, 'getnext'), $security, $oid);
+    $ret = $this->exec($host, 'getnext', $this->build_varbind($oid), $security, $oid);
 
     return array_shift($ret);
   }
@@ -158,10 +155,9 @@ class snmp
   * @param array $security parameters
   * @return array in the format $ip=>array($oid=>$value)
   */
-  function multi_walk($hosts, $oid, $security=NULL)
+  public function multi_walk($hosts, $oid, $security=NULL)
   {
-    $varbind = $this->build_varbind($oid);
-    return $this->exec($hosts, 'getnext', $this->build_packet($varbind, $security, 'getnext'), $security, $oid);
+    return $this->exec($hosts, 'getnext', $this->build_varbind($oid), $security, $oid);
   }
 
  /**
@@ -173,13 +169,13 @@ class snmp
   * @param string $type 'i' = integer; 't' = time ticks; 'x' = hex string; 's' = string; 'a' = IP address; 'o' = object ID; 'n' = null value
   * @param array $security parameters
   */
-  function set($host, $target, $value=0, $type='i', $security=NULL)
+  public function set($host, $target, $value=0, $type='i', $security=NULL)
   {
     if(is_array($target))
       $varbind = $target;
     else
       $varbind = $this->build_varbind($target, $value, $type);
-    $this->exec($host, 'set', $this->build_packet($varbind, $security, 'set'), $security);
+    $this->exec($host, 'set', $varbind, $security);
   }
 
  /**
@@ -191,7 +187,7 @@ class snmp
   * @param string $type 'i' = integer; 't' = time ticks; 'x' = hex string; 's' = string; 'a' = IP address; 'o' = object ID; 'n' = null value
   * @param array $security parameters
   */
-  function multi_set($hosts, $target, $value=0, $type='i', $security=NULL)
+  public function multi_set($hosts, $target, $value=0, $type='i', $security=NULL)
   {
     $this->set($hosts, $target, $value, $type, $security);
   }
@@ -210,7 +206,7 @@ class snmp
   * @param integer $specific_trap_type (this is only for version 1)
   * @param integer $timestamp time since last restart (this is only for version 1)
   */
-  function trap($manager, $security, $varbind, $enterprise='', $agent='', $trap_type=0, $specific_trap_type=0, $timestamp=0)
+  public function trap($manager, $security, $varbind, $enterprise='', $agent='', $trap_type=0, $specific_trap_type=0, $timestamp=0)
   {
     if(is_null($security))
       $security = $this->default_security;
@@ -223,12 +219,9 @@ class snmp
 
     if($this->version == SNMP_VERSION_1)
     {
-      $pdu = new rfc1157_TrapPDU(new rfc1155_ObjectID($enterprise), new rfc1155_NetworkAddress($agent),
-                                 new rfc1157_GenericTrap($trap_type), new rfc1155_Integer($specific_trap_type),
-                                 new rfc1155_TimeTicks($timestamp), $varbind);
+      $pdu = new rfc1157_TrapPDU($enterprise, $agent, $trap_type, $specific_trap_type, $timestamp, $varbind);
       $msg = new rfc1157_Message(SNMP_VERSION_1, $security['community'], $pdu);
-      $contents = $msg->encodeContents();
-      $packet = chr(0x30) . $msg->encodeLength(strlen($contents)) . $contents;
+      $packet = $msg->encode();
     }
     elseif($this->version == SNMP_VERSION_2C || $this->version == SNMP_VERSION_3)
       $packet = $this->build_packet($varbind, $security, 'trap');
@@ -250,7 +243,7 @@ class snmp
   * @param string $type 'i' = integer; 't' = time ticks; 'x' = hex string; 's' = string; 'a' = IP address; 'o' = object ID; 'n' = null value
   * @return array varbind
   */
-  function build_varbind($oid, $value=0, $type='n')
+  public function build_varbind($oid, $value=0, $type='n')
   {
     if(!is_array($oid)) $oid = array($oid);
 
@@ -313,7 +306,7 @@ class snmp
   * @param string $value_type to use for set
   * @return string packet
   */
-  function build_packet($varbind, $security=array('community'=>'public'), $type='get')
+  public function build_packet($varbind, $security=NULL, $type='get')
   {
     if(is_null($security))
       $security = $this->default_security;
@@ -342,6 +335,7 @@ class snmp
     elseif($this->version == SNMP_VERSION_2C || $this->version == SNMP_VERSION_3)
     {
       $request_id = $this->assignRequestID();
+      $reportable = SNMP_REPORTABLE;
       if($type == 'get')
         $pdu = new rfc1905_Get($request_id, 0, 0, $varbind);
       elseif($type == 'getnext')
@@ -353,9 +347,15 @@ class snmp
       elseif($type == 'inform')
         $pdu = new rfc1905_Inform($request_id, 0, 0, $varbind);
       elseif($type == 'trap')
+      {
         $pdu = new rfc1905_Trap($request_id, 0, 0, $varbind);
+        $reportable = 0;
+      }
       elseif($type == 'report')
+      {
         $pdu = new rfc1905_Report($request_id, 0, 0, $varbind);
+        $reportable = 0;
+      }
       else
       {
         trigger_error("Unknown request type: $type", E_USER_WARNING);
@@ -365,12 +365,21 @@ class snmp
         $msg = new rfc1905_Message(SNMP_VERSION_2C, $security['community'], $pdu);
       else
       {
-        $header = new rfc3412_Header($request_id, $security['v3_flags'], $security['v3_security_model']);
-        $security = new rfc3411_USM($security['v3_engine_id'], $security['v3_engine_boots'], $security['v3_engine_time'],
-                                    $security['v3_user'], $security['v3_auth'], $security['v3_priv']);
+        foreach($this->default_security as $key=>$value) if(!isset($security[$key])) $security[$key] = $value;
+
+        $header = new rfc3412_Header($request_id, $security['v3_max_size'],
+                                     $security['v3_flags'] | $reportable, $security['v3_security_model']);
+
+        $usm = new rfc3414_USM($security['v3_engine_id'], $security['v3_engine_boots'],
+                               $security['v3_engine_time'], $security['v3_user']);
+        $usm->auth_password = $security['v3_auth'];
+        $usm->priv_password = $security['v3_priv'];
+        $usm->hash_function = $security['v3_hash'];
+        $usm->crypt_algorithm = $security['v3_crypt_algorithm'];
+        $usm->crypt_mode = $security['v3_crypt_mode'];
 
         $scopedpdu = new rfc3412_ScopedPDU($security['v3_context_engine_id'], $security['v3_context_name'], $pdu);
-        $msg = new rfc3412_Message(SNMP_VERSION_3, $header, $security, $scopedpdu);
+        $msg = new rfc3412_Message(SNMP_VERSION_3, $header, $usm, $scopedpdu);
       }
     }
     else
@@ -379,8 +388,7 @@ class snmp
       return '';
     }
 
-    $contents = $msg->encodeContents();
-    return chr(0x30) . $msg->encodeLength(strlen($contents)) . $contents;
+    return $msg->encode();
   }
 
  /**
@@ -393,18 +401,22 @@ class snmp
   * @param string $stop
   * @return array in the format $ip=>array($oid=>$value)
   */
-  function exec($hosts, $type, $packet, $security=array('community'=>'public'), $stop='')
+  public function exec($hosts, $type, $varbind, $security=NULL, $stop='')
   {
     $queue = array();
     $buffer = $port = NULL;
     $ret = array();
 
+    foreach($this->default_security as $key=>$value) if(!isset($security[$key])) $security[$key] = $value;
+
+    $packet = $this->build_packet($varbind, $security, $type);
+
     // add each host to the queue
-    if(!is_array($hosts))
-      $hosts = array($hosts);
+    if(!is_array($hosts)) $hosts = array($hosts);
     foreach($hosts as $host)
     {
-      if(ip2long($host) == -1) $host = gethostbyname($host); // we don't like hostnames
+      $h = ip2long($host);
+      if($h == -1 || $h === false) $host = gethostbyname($host); // we don't like hostnames
       $queue[] = array($packet, $host);
       $ret[$host] = array();
     }
@@ -414,6 +426,16 @@ class snmp
       $msg = new rfc1157_Message();
     elseif($this->version == SNMP_VERSION_2C)
       $msg = new rfc1905_Message();
+    elseif($this->version == SNMP_VERSION_3)
+    {
+      $usm = new rfc3414_USM();
+      $usm->auth_password = $security['v3_auth'];
+      $usm->priv_password = $security['v3_priv'];
+      $usm->hash_function = $security['v3_hash'];
+      $usm->crypt_algorithm = $security['v3_crypt_algorithm'];
+      $usm->crypt_mode = $security['v3_crypt_mode'];
+      $msg = new rfc3412_Message(SNMP_VERSION_3, new rfc3412_Header(), $usm);
+    }
     else
     {
       trigger_error("Unknown SNMP version {$this->version}", E_USER_WARNING);
@@ -421,7 +443,13 @@ class snmp
     }
 
     $socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
-    socket_set_nonblock($socket);
+    if($socket === false)
+    {
+      trigger_error('Unable to create socket.', E_USER_WARNING);
+      return array();
+    }
+    if(!socket_set_nonblock($socket))
+      trigger_error('Unable to set socket to nonblocking.', E_USER_WARNING);
 
     $sent = 0;
     $received = 0;
@@ -442,8 +470,11 @@ class snmp
               socket_set_nonblock($socket);
               $block_state = 0;
             }
-            @socket_sendto($socket, $entry[0], strlen($entry[0]), 0, $entry[1], 161);
-            $sent++;
+
+            if(@socket_sendto($socket, $entry[0], strlen($entry[0]), 0, $entry[1], 161) === false)
+              trigger_error('Unable to send packet.', E_USER_WARNING);
+            else
+              $sent++;
             $t = $this->microtime();
           }
         }
@@ -468,18 +499,37 @@ class snmp
         if($buffer != '' && isset($ret[$rhost]))
         {
           $received++;
-          // decode and store packet
+
           $msg = $msg->decode($buffer);
-          if($msg->data->errorStatus->value)
-            trigger_error($msg->data->errorStatus->toString(), E_USER_WARNING);
-          foreach($msg->data->varBindList->value as $val)
+
+          if($security['v3_context_engine_id'] == '' && $msg->version() == SNMP_VERSION_3)
           {
-            $oid = $val->objectID->toString();
-            if(($stop == '' || strpos(' '. $oid, $stop) != 0) && !isset($ret[$rhost][$oid]))
+            $usm = $msg->usm_security();
+            $security['v3_engine_id'] = $usm->engineID();
+            $security['v3_engine_boots'] = $usm->engineBoots();
+            $security['v3_engine_time'] = $usm->engineTime();
+
+            $spdu = $msg->scopedPDU();
+            $security['v3_context_engine_id'] = $spdu->engineID();
+            $security['v3_context_name'] = $spdu->name();
+
+            $queue[] = array($this->build_packet($varbind, $security, $type), $rhost);
+          }
+          else
+          {
+            $pdu = $msg->pdu();
+
+            if($pdu->errorStatus()) trigger_error($pdu->errorString(), E_USER_WARNING);
+
+            foreach($pdu->varBindList() as $val)
             {
-              if($type == 'getnext')
-                $queue[] = array($this->build_packet($this->build_varbind($oid), $security, 'getnext'), $rhost);
-              $ret[$rhost][$oid] = $val->objectValue->toString();
+              $oid = $val->value[0]->toString();
+              if(($stop == '' || strpos(' '. $oid, $stop) != 0) && !isset($ret[$rhost][$oid]))
+              {
+                if($type == 'getnext')
+                  $queue[] = array($this->build_packet($this->build_varbind($oid), $security, 'getnext'), $rhost);
+                $ret[$rhost][$oid] = $val->value[1]->toString();
+              }
             }
           }
         }
@@ -493,7 +543,7 @@ class snmp
   *
   * @return integer a request id
   */
-  function assignRequestID()
+  public function assignRequestID()
   {
     static $nextRequestID = 0;
     if($nextRequestID == 0 || $nextRequestID >= 2147483647) $nextRequestID = mt_rand();
@@ -505,7 +555,7 @@ class snmp
   *
   * @return float microtime
   */
-  function microtime()
+  public function microtime()
   {
     list($usec, $sec) = explode(' ', microtime());
     return ((float)$usec + (float)$sec);

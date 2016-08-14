@@ -71,7 +71,7 @@ function hexbin($hex) // convert a hex string to raw data
 /**
  * Divide with Remainder
  *
- * This function uses float operation to do what was done with bit operations on integers previously.
+ * This public function uses float operation to do what was done with bit operations on integers previously.
  * This is the result of PHP automatically converting large numbers to floats. PHP has no unsigned longs.
  * One advantage is that it can handle 64 bit integers, although some precision is lost.
  *
@@ -139,7 +139,7 @@ class rfc1155_Asn1Object
  /**
   * Constructor
   */
-  function rfc1155_Asn1Object(){}
+  public function __construct(){}
 
  /**
   * Encode Asn1Object
@@ -148,7 +148,7 @@ class rfc1155_Asn1Object
   *
   * @return string encoded object
   */
-  function encode()
+  public function encode()
   {
     $contents = $this->encodeContents();
     return $this->encodeIdentifier() . $this->encodeLength(strlen($contents)) . $contents;
@@ -162,7 +162,7 @@ class rfc1155_Asn1Object
   * @param string $stream
   * @return array (tag, remaining_stream)
   */
-  function decodeTag($stream)
+  public function decodeTag($stream)
   {
     $tag = ord($stream{0});
     $n = 1;
@@ -189,7 +189,7 @@ class rfc1155_Asn1Object
   * @param string $stream
   * @return array (length, remaining_stream)
   */
-  function decodeLength($stream)
+  public function decodeLength($stream)
   {
     $length = ord($stream{0});
     $i = 1;
@@ -212,7 +212,7 @@ class rfc1155_Asn1Object
   * @param string $stream
   * @return array of rfc1155_Asn1Object
   */
-  function decode($stream)
+  public function decode($stream)
   {
     /* This method should be overridden by subclasses to define how to decode one of themselves from a fixed length stream.  This
        general case method looks at the identifier at the beginning of a stream of octets and uses the appropriate decode() method
@@ -248,11 +248,11 @@ class rfc1155_Asn1Object
  /**
   * Encode Contents
   *
-  * encodeContents should be overridden by subclasses to encode the contents of a particular type
+  * encodeContents must be overridden by subclasses to encode the contents of a particular type
   *
   * @return string
   */
-  function encodeContents()
+  public function encodeContents()
   {
     trigger_error('encodeContents not implemented', E_USER_ERROR);
   }
@@ -264,7 +264,7 @@ class rfc1155_Asn1Object
   *
   * @return string
   */
-  function encodeIdentifier()
+  public function encodeIdentifier()
   {
     if($this->asnTagNumber < 0x1F)
     {
@@ -278,7 +278,7 @@ class rfc1155_Asn1Object
       // encode the first octet
       $resultlist = array();
       $resultlist[] = chr($this->asnTagClass | $this->asnTagFormat | 0x1F);
-            
+
       // encode each subsequent octet
       $integer = $this->asnTagNumber;
       while($integer != 0)
@@ -301,7 +301,7 @@ class rfc1155_Asn1Object
   * @param integer $length
   * @return string
   */
-  function encodeLength($length)
+  public function encodeLength($length)
   {
     if(defined('SNMP_SHORT_INT_LENGTH')) // hack to be compatible with Cisco software
     {
@@ -336,7 +336,7 @@ class rfc1155_Asn1Object
   *
   * @return string
   */
-  function encodeEndOfContents()
+  public function encodeEndOfContents()
   {
      return "\000\000";
   }
@@ -352,17 +352,16 @@ class rfc1155_Asn1Object
  */
 class rfc1155_Boolean extends rfc1155_Asn1Object
 {
-
  /**
   * Constructor
   *
-  * @param integer $value
+  * @param boolean $value
   */
-  function rfc1155_Integer($value=true)
+  public function __construct($value=true)
   {
     $this->asnTagClass = ASN_TAG_CLASS_UNIVERSAL;
     $this->asnTagNumber = ASN_TAG_BOOLEAN;
-    
+
     $this->value = ($value) ? true : false;
   }
 
@@ -371,9 +370,9 @@ class rfc1155_Boolean extends rfc1155_Asn1Object
   *
   * @return string value of this object
   */
-  function toString()
+  public function toString()
   {
-    return ($value) ? 'true' : 'false';
+    return ($this->value) ? 'true' : 'false';
   }
 
  /**
@@ -383,7 +382,7 @@ class rfc1155_Boolean extends rfc1155_Asn1Object
   *
   * @return string
   */
-  function encodeContents()
+  public function encodeContents()
   {
     trigger_error('encodeContents not written yet', E_USER_ERROR);
   }
@@ -394,9 +393,9 @@ class rfc1155_Boolean extends rfc1155_Asn1Object
   * Decode octet stream
   *
   * @param string $stream
-  * @return rfc1155_Integer
+  * @return rfc1155_Boolean
   */
-  function decodeContents($stream)
+  public function decodeContents(/*$stream*/)
   {
     trigger_error('decodeContents not written yet', E_USER_ERROR);
     return $this;
@@ -413,24 +412,38 @@ class rfc1155_Boolean extends rfc1155_Asn1Object
  */
 class rfc1155_Integer extends rfc1155_Asn1Object
 {
-  var $MINVAL = -2147483648;
-  var $MAXVAL =  2147483647;
-
  /**
   * Constructor
   *
   * @param integer $value
   */
-  function rfc1155_Integer($value=0)
+  public function __construct($value=0)
   {
     $this->asnTagClass = ASN_TAG_CLASS_UNIVERSAL;
     $this->asnTagNumber = ASN_TAG_INTEGER;
-    
-    if($value < $this->MINVAL || $value > $this->MAXVAL)
-    {
-      trigger_error("Integer value of $value is out of bounds", E_USER_WARNING);
-    }
+    $this->check_range($value);
     $this->value = $value;
+  }
+
+ /**
+  * Check range for integer value
+  *
+  * @param integer $value
+  * @param integer $min
+  * @param integer $max
+  */
+  public function check_range($value, $min=NULL, $max=NULL)
+  {
+    static $MINVAL = -2147483648;
+    static $MAXVAL = 2147483647;
+    if(!is_null($min)) $MINVAL = $min;
+    if(!is_null($max)) $MAXVAL = $max;
+
+    $value = intval($value);
+    if(is_null($min) && is_null($max) && ($value < $MINVAL || $value > $MAXVAL))
+    {
+      trigger_error("Integer value of $value (".gettype($value).") is out of bounds ($MINVAL to $MAXVAL)", E_USER_WARNING);
+    }
   }
 
  /**
@@ -438,7 +451,7 @@ class rfc1155_Integer extends rfc1155_Asn1Object
   *
   * @return string value of this object
   */
-  function toString()
+  public function toString()
   {
     return $this->value;
   }
@@ -450,7 +463,7 @@ class rfc1155_Integer extends rfc1155_Asn1Object
   *
   * @return string
   */
-  function encodeContents()
+  public function encodeContents()
   {
     // We handle two special cases otherwise we handle positive and negative numbers independently
 
@@ -494,7 +507,7 @@ class rfc1155_Integer extends rfc1155_Asn1Object
   * @param string $stream
   * @return rfc1155_Integer
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
     $this->value = 0;
     $byte = ord($stream{0});
@@ -532,9 +545,9 @@ class rfc1155_OctetString extends rfc1155_Asn1Object
  /**
   * Constructor
   *
-  * @param strin $value 
+  * @param strin $value
   */
-  function rfc1155_OctetString($value='')
+  public function __construct($value='')
   {
     $this->asnTagClass = ASN_TAG_CLASS_UNIVERSAL;
     $this->asnTagNumber = ASN_TAG_OCTETSTRING;
@@ -548,7 +561,7 @@ class rfc1155_OctetString extends rfc1155_Asn1Object
   *
   * @return boolean
   */
-  function is_printable()
+  public function is_printable()
   {
     for($i = strlen($this->value) - 1; $i >= 0; $i--)
     {
@@ -570,7 +583,7 @@ class rfc1155_OctetString extends rfc1155_Asn1Object
   *
   * @return string
   */
-  function toHex()
+  public function toHex()
   {
     $ret = '';
     for($i = 0; $i < strlen($this->value); $i++)
@@ -583,7 +596,7 @@ class rfc1155_OctetString extends rfc1155_Asn1Object
   *
   * @return string
   */
-  function toString()
+  public function toString()
   {
     if($this->is_printable())
       return $this->value;
@@ -598,7 +611,7 @@ class rfc1155_OctetString extends rfc1155_Asn1Object
   *
   * @return string
   */
-  function encodeContents()
+  public function encodeContents()
   {
     // An OctetString is already encoded. Whee!
     return $this->value;
@@ -612,7 +625,7 @@ class rfc1155_OctetString extends rfc1155_Asn1Object
   * @param string $stream
   * @return rfc1155_OctetString
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
     // An OctetString is already decoded. Whee!
     $this->value = $stream;
@@ -635,7 +648,7 @@ class rfc1155_ObjectID extends rfc1155_Asn1Object
   *
   * @param string $value
   */
-  function rfc1155_ObjectID($value=array())
+  public function __construct($value=array())
   {
     // Create an ObjectID - value is a list of subids as a string or list
     $this->asnTagClass = ASN_TAG_CLASS_UNIVERSAL;
@@ -663,7 +676,7 @@ class rfc1155_ObjectID extends rfc1155_Asn1Object
   *
   * @return string
   */
-  function toString()
+  public function toString()
   {
     return '.' . join('.', $this->value);
   }
@@ -675,7 +688,7 @@ class rfc1155_ObjectID extends rfc1155_Asn1Object
   *
   * @return string
   */
-  function encodeContents()
+  public function encodeContents()
   {
     $result = array();
     $idlist = $this->value;
@@ -717,7 +730,7 @@ class rfc1155_ObjectID extends rfc1155_Asn1Object
   * @param string $stream
   * @return rfc1155_ObjectID
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
     $this->value = array();
 
@@ -726,7 +739,7 @@ class rfc1155_ObjectID extends rfc1155_Asn1Object
       trigger_error('Stream of zero length in ' . get_class($this), E_USER_WARNING);
       return $this;
     }
-        
+
     // Do the funky decode of the first octet
     if(ord($stream{0}) < 128)
     {
@@ -745,7 +758,7 @@ class rfc1155_ObjectID extends rfc1155_Asn1Object
     }
 
     // Decode the rest of the octets
-    $n = 1;        
+    $n = 1;
     while($n < strlen($stream))
     {
       $subid = ord($stream{$n});
@@ -786,7 +799,7 @@ class rfc1155_Null extends rfc1155_Asn1Object // An ASN.1 Object Identifier type
  /**
   * Constructor
   */
-  function rfc1155_Null()
+  public function __construct()
   {
     $this->asnTagClass = ASN_TAG_CLASS_UNIVERSAL;
     $this->asnTagFormat = ASN_TAG_FORMAT_PRIMITIVE;
@@ -798,7 +811,7 @@ class rfc1155_Null extends rfc1155_Asn1Object // An ASN.1 Object Identifier type
   *
   * @return string
   */
-  function toString()
+  public function toString()
   {
     return '';
   }
@@ -810,7 +823,7 @@ class rfc1155_Null extends rfc1155_Asn1Object // An ASN.1 Object Identifier type
   *
   * @return string
   */
-  function encodeContents()
+  public function encodeContents()
   {
     return '';
   }
@@ -823,7 +836,7 @@ class rfc1155_Null extends rfc1155_Asn1Object // An ASN.1 Object Identifier type
   * @param string $stream
   * @return rfc1155_Null
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
     if(strlen($stream) != 0)
       trigger_error('Input stream too long for ' . get_class($this), E_USER_WARNING);
@@ -849,7 +862,7 @@ class rfc1155_Sequence extends rfc1155_Asn1Object
   *
   * @param array $value list of rfc1155_Asn1Object
   */
-  function rfc1155_Sequence($value=array())
+  public function __construct($value=array())
   {
     $this->asnTagClass = ASN_TAG_CLASS_UNIVERSAL;
     $this->asnTagFormat = ASN_TAG_FORMAT_CONSTRUCTED;
@@ -864,7 +877,7 @@ class rfc1155_Sequence extends rfc1155_Asn1Object
   *
   * @return string
   */
-  function encodeContents()
+  public function encodeContents()
   {
     // To encode a Sequence, we simply encode() each sub-object in turn.
     $resultlist = array();
@@ -881,11 +894,23 @@ class rfc1155_Sequence extends rfc1155_Asn1Object
   * @param string $stream
   * @return rfc1155_Sequence
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
-    $objectList = $this->decode($stream);
-    $this->value = $objectList;
+    $this->value = $this->decode($stream);
     return $this;
+  }
+
+ /**
+  * toString
+  *
+  * @return string
+  */
+  public function toString()
+  {
+    $vals = array();
+    foreach($this->value as $v) $vals[] = get_class($v) . '(' . $v->toString() . ')';
+    $vals = join(',', $vals);
+    return get_class($this) . "($vals)";
   }
 }
 
@@ -912,9 +937,9 @@ class rfc1155_SequenceOf extends rfc1155_Sequence
   * @param string $componentType name of object type used
   * @param array $value list of rfc1155_Asn1Object of type $componentType
   */
-  function rfc1155_SequenceOf($componentType='rfc1155_asn1Object', $value=array())
+  public function __construct($componentType='rfc1155_asn1Object', $value=array())
   {
-    parent::rfc1155_Sequence($value);
+    parent::__construct($value);
     $this->asnTagClass = ASN_TAG_CLASS_UNIVERSAL;
     $this->asnTagFormat = ASN_TAG_FORMAT_CONSTRUCTED;
     $this->asnTagNumber = ASN_TAG_SEQUENCE;
@@ -923,6 +948,7 @@ class rfc1155_SequenceOf extends rfc1155_Sequence
 
     // Add each item in the list to ourselves, which automatically checks each one to ensure it is of the correct type.
     $this->value = array();
+
     foreach($value as $item)
       $this->append($item);
   }
@@ -934,10 +960,21 @@ class rfc1155_SequenceOf extends rfc1155_Sequence
   *
   * @param rfc1155_Asn1Object object to add
   */
-  function append($value)
+  public function append($value)
   {
     if(!is_a($value, $this->componentType))
-      trigger_error(get_class($this) . ' cannot contain components of type: ' . get_class($value), E_USER_WARNING);
+    {
+      if(is_subclass_of(new $this->componentType(), get_class($value)))
+      {
+
+// broken way of doing this!
+        $v = $value->value;
+        $value = new $this->componentType();
+        $value->value = $v;
+      }
+      else
+        trigger_error(get_class($this) . ' cannot contain components of type: ' . get_class($value), E_USER_WARNING);
+    }
     $this->value[] = $value;
   }
 }
@@ -959,34 +996,29 @@ class rfc1155_IPAddress extends rfc1155_OctetString
   *
   * @param mixed $value (can be array, long, hostname or ip address)
   */
-  function rfc1155_IPAddress($value='0.0.0.0')
+  public function __construct($value='0.0.0.0')
   {
-    parent::rfc1155_OctetString($value);
+    parent::__construct($value);
     $this->asnTagClass = ASN_TAG_CLASS_APPLICATION;
     $this->asnTagFormat = ASN_TAG_FORMAT_PRIMITIVE;
     $this->asnTagNumber = ASN_TAG_IPADDRESS;
 
-    // accept long version of ip
-    if(is_numeric($value))
-      $value = long2ip($value);
-
-    // accept a hostname
-    if(ip2long($value) == -1)
-      $value = gethostbyname($value);
-
-    // accept a string
-    if(is_string($value))
-      $value = explode('.', $value);
-
-    $this->value = '';
-    // accept an array
     if(is_array($value))
     {
       if(count($value) != 4)
         trigger_error('IPAddress must be of length 4', E_USER_WARNING);
-      foreach($value as $item)
-        $this->value .= chr($item);
+      $value = join('.', $value);
     }
+
+    if(strpos($value, '.') !== false) // string
+    {
+      $h = ip2long($value);
+      if($h == -1 || $h === false)
+        $value = ip2long(gethostbyname($value));
+      else
+        $value = $h;
+    }
+    $this->value = long2ip($value);
   }
 
  /**
@@ -994,9 +1026,25 @@ class rfc1155_IPAddress extends rfc1155_OctetString
   *
   * @return string
   */
-  function toString()
+  public function toString()
   {
-    return ord($this->value{0}) . '.' . ord($this->value{1}) . '.' . ord($this->value{2}) . '.' . ord($this->value{3});
+    return $this->value;
+  }
+
+ /**
+  * Encode Contents
+  *
+  * encode into an octet stream
+  *
+  * @return string
+  */
+  public function encodeContents()
+  {
+    $ret = '';
+    $value = explode('.', $this->value);
+    for($i = 0; $i < 4; $i++)
+      $ret .= chr($value[$i]);
+    return $ret;
   }
 
  /**
@@ -1007,11 +1055,9 @@ class rfc1155_IPAddress extends rfc1155_OctetString
   * @param string $stream
   * @return rfc1155_IPAddress
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
-    // An IPAddress is already decoded. Whee!
-
-    $this->value = $stream;
+    $this->value = ord($stream{0}) . '.' . ord($stream{1}) . '.' . ord($stream{2}) . '.' . ord($stream{3});
     return $this;
   }
 }
@@ -1028,17 +1074,17 @@ class rfc1155_IPAddress extends rfc1155_OctetString
  */
 class rfc1155_NetworkAddress extends rfc1155_IPAddress
 {
-  var $name;
+//  var $name;
 
  /**
   * Constructor
   *
   * @param mixed $value (can be array, long, hostname or ip address)
   */
-  function rfc1155_NetworkAddress($value)
+  public function __construct($value)
   {
-    parent::rfc1155_IPAddress($value);
-    $this->name = 'internet';
+    parent::__construct($value);
+//    $this->name = 'internet';
   }
 }
 
@@ -1059,11 +1105,10 @@ class rfc1155_Counter extends rfc1155_Integer
   *
   * @param integer $value
   */
-  function rfc1155_Counter($value=0)
-  {    
-    $this->MINVAL = 0;
-    $this->MAXVAL = 4294967295;
-    parent::rfc1155_Integer($value);
+  public function __construct($value=0)
+  {
+    $this->check_range($value, 0, 4294967295);
+    parent::__construct($value);
     $this->asnTagClass = ASN_TAG_CLASS_APPLICATION;
     $this->asnTagFormat = ASN_TAG_FORMAT_PRIMITIVE;
     $this->asnTagNumber = ASN_TAG_COUNTER;
@@ -1081,7 +1126,7 @@ class rfc1155_Counter extends rfc1155_Integer
   * @param string $stream
   * @return rfc1155_Counter
   */
-  function decodeContents($stream)
+  public function decodeContents($stream)
   {
     if(defined('SNMP_ABS_COUNTER')) // hack to be compatible with Cisco software
     {
@@ -1118,16 +1163,15 @@ class rfc1155_Guage extends rfc1155_Integer
   *
   * @param integer $value
   */
-  function rfc1155_Guage($value=0)
+  public function __construct($value=0)
   {
-    $this->MINVAL = 0;
-    $this->MAXVAL = 4294967295;
-    parent::rfc1155_Integer($value);
+    $this->check_range($value, 0, 4294967295);
+    parent::__construct($value);
     $this->asnTagClass = ASN_TAG_CLASS_APPLICATION;
     $this->asnTagFormat = ASN_TAG_FORMAT_PRIMITIVE;
     $this->asnTagNumber = ASN_TAG_GUAGE;
   }
-}    
+}
 
 /**
  * rfc1155 TimeTicks
@@ -1141,22 +1185,21 @@ class rfc1155_Guage extends rfc1155_Integer
  */
 class rfc1155_TimeTicks extends rfc1155_Integer
 {
-  var $epoch;
+//  var $epoch;
 
  /**
   * Constructor
   *
   * @param integer $value
   */
-  function rfc1155_TimeTicks($value=0, $epoch=NULL)
+  public function __construct($value=0/*, $epoch=NULL*/)
   {
-    $this->MINVAL = 0;
-    $this->MAXVAL = 4294967295;
-    parent::rfc1155_Integer($value);
+    $this->check_range($value, 0, 4294967295);
+    parent::__construct($value);
     $this->asnTagClass = ASN_TAG_CLASS_APPLICATION;
     $this->asnTagFormat = ASN_TAG_FORMAT_PRIMITIVE;
     $this->asnTagNumber = ASN_TAG_TIMETICKS;
-    $this->epoch = $epoch;
+//    $this->epoch = $epoch;
   }
 }
 
@@ -1179,9 +1222,9 @@ class rfc1155_Opaque extends rfc1155_OctetString
   *
   * @param string $value
   */
-  function rfc1155_Opaque($value)
+  public function __construct($value)
   {
-    parent::rfc1155_OctetString($value);
+    parent::__construct($value);
   }
 }
 ?>

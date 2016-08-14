@@ -1,23 +1,71 @@
 <?php
+/**
+ * phpsnmp - a PHP SNMP library
+ *
+ * Copyright (C) 2004 David Eder <david@eder,us>
+ *
+ * Based on snmp - a Python SNMP library
+ * Copyright (C) 2003 Unicity Pty Ltd <libsnmp@unicity.com.au>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * @author David Eder <david@eder.us>
+ * @copyright 2004 David Eder
+ * @package phpSNMP
+ * @subpackage mib_compiler
+ * @version .7
+ */
+
+/**
+ */
+
   set_time_limit(0);
   ini_set('memory_limit', '256M');
   error_reporting(E_ALL);
 
   $mc = new mib_compiler();
   $mc->add_mibs('/usr/share/snmp/mibs');
-  $mc->add_mibs('/home/html/projects/phpsnmp/mibs');
   $mc->compile();
 
+/**
+ * Asn1Objects
+ *
+ * Base class for all Asn1Objects. This is only intended to support a specific subset of ASN1 stuff as
+ * defined by the RFCs to keep things as simple as possible.
+ *
+ * @package phpSNMP
+ * @subpackage mib_compiler
+ */
   class mib_compiler
   {
     var $parsed = array();
     var $outfile = 'oid_format.data';
 
-    function mib_compiler()
+   /**
+    * Constructor
+    */
+    public function __construct()
     {
     }
 
-    function add_mibs($path)
+   /**
+    * Add mibs
+    *
+    * @param string $path
+    */
+    public function add_mibs($path)
     {
       foreach(glob("$path/*") as $mib)
       {
@@ -28,13 +76,21 @@
       }
     }
 
-    function add_mib($filename)
+   /**
+    * Add a mib
+    *
+    * @param string $filename
+    */
+    public function add_mib($filename)
     {
       echo "Loading $filename\n";
       $this->parse(file_get_contents($filename));
     }
 
-    function compile()
+   /**
+    * Compile mibs
+    */
+    public function compile()
     {
       echo 'Found ' . count($this->parsed) . " objects\n";
       echo "Building node list\n";
@@ -74,7 +130,13 @@
     // NOTHING PUBLIC BELOW //
     // // // // // // // // //
 
-    function parse($mibtext, $full=false)
+   /**
+    * Parse a MIB file
+    *
+    * @param string $mibtext
+    * @param boolean $full
+    */
+    public function parse($mibtext, $full=false)
     {
       $tokens = $this->get_tokens($mibtext);
       $cnt = count($tokens);
@@ -136,7 +198,13 @@
       if(isset($rec['NAME']) && isset($rec['VALUE'])) $this->parsed[] = $rec;
     }
 
-    function get_tokens($text)
+   /**
+    * Get Tokens
+    *
+    * @param string $text
+    * @return array
+    */
+    public function get_tokens($text)
     {
       $in_quote = false;
       $in_comment = false;
@@ -239,7 +307,15 @@
       return $tokens;
     }
 
-    function parse_simple_token($tokens, &$index, $allowed=NULL)
+   /**
+    * Parse simple token
+    *
+    * @param array $tokens
+    * @param integer $index
+    * @param array $allowed
+    * @return array
+    */
+    public function parse_simple_token($tokens, &$index, $allowed=NULL)
     {
       if(is_array($allowed))
       {
@@ -257,7 +333,14 @@
       return $tokens[++$index];
     }
 
-    function parse_SYNTAX_token($tokens, &$index)
+   /**
+    * Parse SYNTAX token
+    *
+    * @param array $tokens
+    * @param integer $index
+    * @return array
+    */
+    public function parse_SYNTAX_token($tokens, &$index)
     {
       $ret = NULL;
       switch($tokens[$index+1])
@@ -322,7 +405,16 @@
       return $ret;
     }
 
-    function parse_bracket_token($tokens, &$index, $start, $end)
+   /**
+    * Parse bracket token
+    *
+    * @param array $tokens
+    * @param integer $index
+    * @param integer $start
+    * @param integer $end
+    * @return array
+    */
+    public function parse_bracket_token($tokens, &$index, $start, $end)
     {
       $begin = $index + 1;
       while($index + 1 < count($tokens) && $tokens[$index] != $end)

@@ -56,11 +56,9 @@ class rfc1902_Integer32 extends rfc1155_Integer
   *
   * @param integer $value
   */
-  function rfc1902_Integer32($value)
+  public function __construct($value)
   {
-    $this->MINVAL = -2147483648;
-    $this->MAXVAL = 2147483648;
-    parent::rfc1155_Integer($value);
+    parent::__construct($value);
   }
 }
 
@@ -79,9 +77,9 @@ class rfc1902_Counter32 extends rfc1155_Counter
   *
   * @param integer $value
   */
-  function rfc1902_Counter32($value)
+  public function __construct($value)
   {
-    parent::rfc1155_Counter($value);
+    parent::__construct($value);
   }
 }
 
@@ -100,9 +98,9 @@ class rfc1902_Guage32 extends rfc1155_Guage
   *
   * @param integer $value
   */
-  function rfc1902_Guage32($value)
+  public function __construct($value)
   {
-    parent::rfc1155_Guage($value);
+    parent::__construct($value);
   }
 }
 
@@ -121,12 +119,11 @@ class rfc1902_Counter64 extends rfc1155_Counter
   *
   * @param integer $value
   */
-  function rfc1902_Counter64($value=0)
+  public function __construct($value=0)
   {
-    $this->MINVAL = 0;
-    $this->MAXVAL = 18446744073709551615;
+    $this->check_range($value, 0, 18446744073709551615);
+    parent::__construct($value);
     $this->asnTagClass = ASN_TAG_COUNTER64;
-    parent::rfc1155_Counter($value);
   }
 }
 
@@ -145,11 +142,11 @@ class rfc1902_OctetString extends rfc1155_OctetString
   *
   * @param string $value
   */
-  function rfc1902_OctetString($value)
+  public function __construct($value)
   {
     if(strlen($value) > 65535)
       trigger_error('OctetString must be shorter than 65535 bytes', E_USER_WARNING);
-    parent::rfc1155_OctetString($value);
+    parent::__construct($value);
   }
 }
 ?>

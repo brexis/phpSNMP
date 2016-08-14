@@ -46,13 +46,16 @@ class rfc3411_EngineID extends rfc1155_OctetString
   *
   * @param string $value
   */
-  function rfc3411_EngineID($value)
+  public function __construct($value)
   {
-    if(strlen($value) < 5 || strlen($value) > 32)
-      trigger_error('rfc3411_EngineID must be of length 5 to 32', E_USER_WARNING);
-    if(!(ord($value{0}) & 0x80) && strlen($value) != 12)
-      trigger_error('rfc3411_EngineID size mismatch', E_USER_WARNING);
-    parent::rfc1155_OctetString($value);
+    if($value != '')
+    {
+      if(strlen($value) < 5 || strlen($value) > 32)
+        trigger_error('rfc3411_EngineID must be of length 5 to 32', E_USER_WARNING);
+      if(!(ord($value{0}) & 0x80) && strlen($value) != 12)
+        trigger_error('rfc3411_EngineID size mismatch', E_USER_WARNING);
+    }
+    parent::__construct($value);
   }
 }
 ?>

@@ -65,9 +65,12 @@ $ASN_TAG_DICT[0x82] = 'rfc1905_EndOfMibView';
  */
 class rfc1905_NoSuchObject extends rfc1155_Null
 {
-  function rfc1905_NoSuchObject()
+ /**
+  * Constructor
+  */
+  public function __construct()
   {
-    parent::rfc1155_Null();
+    parent::__construct();
     $this->asnTagNumber = ASN_TAG_NO_SUCH_OBJECT;
   }
 
@@ -76,7 +79,7 @@ class rfc1905_NoSuchObject extends rfc1155_Null
   *
   * @return string value of this object
   */
-  function toString()
+  public function toString()
   {
     return 'No such Object';
   }
@@ -95,9 +98,9 @@ class rfc1905_NoSuchInstance extends rfc1155_Null
  /**
   * Constructor
   */
-  function rfc1905_NoSuchInstance()
+  public function __construct()
   {
-    parent::rfc1155_Null();
+    parent::__construct();
     $this->asnTagNumber = ASN_TAG_NO_SUCH_INSTANCE;
   }
 
@@ -106,7 +109,7 @@ class rfc1905_NoSuchInstance extends rfc1155_Null
   *
   * @return string value of this object
   */
-  function toString()
+  public function toString()
   {
     return 'No such Instance';
   }
@@ -125,9 +128,9 @@ class rfc1905_EndOfMibView extends rfc1155_Null
  /**
   * Constructor
   */
-  function rfc1905_EndOfMibView()
+  public function __construct()
   {
-    parent::rfc1155_Null();
+    parent::__construct();
     $this->asnTagNumber = ASN_TAG_END_OF_MIB_VIEW;
   }
 
@@ -136,7 +139,7 @@ class rfc1905_EndOfMibView extends rfc1155_Null
   *
   * @return string value of this object
   */
-  function toString()
+  public function toString()
   {
     return 'End of MIB';
   }
@@ -157,11 +160,11 @@ class rfc1905_VarBindList extends rfc1157_VarBindList
   *
   * @param array $value
   */
-  function rfc1905_VarBindList($value=array())
+  public function __construct($value=array())
   {
     if(count($value) > MAX_BINDINGS)
       trigger_error('A VarBindList must be shorter than ' . MAX_BINDINGS, E_USER_WARNING);
-    parent::rfc1157_VarBindList($value);
+    parent::__construct($value);
   }
 }
 
@@ -180,9 +183,9 @@ class rfc1905_Message extends rfc1157_Message
   * @param string $community
   * @param mixed $data
   */
-  function rfc1905_Message($version=1, $community='public', $data=NULL)
+  public function __construct($version=1, $community='public', $data=NULL)
   {
-    parent::rfc1157_Message($version, $community, $data);
+    parent::__construct($version, $community, $data);
   }
 }
 
@@ -201,38 +204,35 @@ class rfc1905_ErrorStatus extends rfc1157_ErrorStatus
   *
   * @param integer $value
   */
-  function rfc1905_ErrorStatus($value)
+  public function __construct($value)
   {
-    parent::rfc1157_ErrorStatus($value);
+    parent::__construct($value);
+  }
 
-    # add to the SNMPv1 error strings
-    $this->errString[6] = 'Access is not permitted';
-    $this->errString[7] = 'Type is incorrect';
-    $this->errString[8] = 'Length is incorrect';
-    $this->errString[9] = 'Encoding is incorrect';
-    $this->errString[10] = 'Value is incorrect';
-    $this->errString[11] = 'No creation';
-    $this->errString[12] = 'Value is inconsistent';
-    $this->errString[13] = 'Resourse Unavailable';
-    $this->errString[14] = 'Commit Failed';
-    $this->errString[15] = 'Undo Failed';
-    $this->errString[16] = 'Authorization Error';
-    $this->errString[17] = 'Not Writable';
-    $this->errString[18] = 'Inconsistent Name';
-
-    $this->errNum[6]  = 'noAccess';
-    $this->errNum[7]  = 'wrongType';
-    $this->errNum[8]  = 'wrongLength';
-    $this->errNum[9]  = 'wrongEncoding';
-    $this->errNum[10] = 'wrongValue';
-    $this->errNum[11] = 'noCreation';
-    $this->errNum[12] = 'inconsistentValue';
-    $this->errNum[13] = 'resourceUnavailable';
-    $this->errNum[14] = 'commitFailed';
-    $this->errNum[15] = 'undoFailed';
-    $this->errNum[16] = 'authorizationError';
-    $this->errNum[17] = 'notWritable';
-    $this->errNum[18] = 'inconsistentName';
+ /**
+  * ToString
+  *
+  * @return string value of this object
+  */
+  public function toString()
+  {
+    switch($this->value)
+    {
+      case 6: return 'Access is not permitted';
+      case 7: return 'Type is incorrect';
+      case 8: return 'Length is incorrect';
+      case 9: return 'Encoding is incorrect';
+      case 10: return 'Value is incorrect';
+      case 11: return 'No creation';
+      case 12: return 'Value is inconsistent';
+      case 13: return 'Resourse Unavailable';
+      case 14: return 'Commit Failed';
+      case 15: return 'Undo Failed';
+      case 16: return 'Authorization Error';
+      case 17: return 'Not Writable';
+      case 18: return 'Inconsistent Name';
+    }
+    return parent::toString();
   }
 }
 
@@ -254,36 +254,31 @@ class rfc1905_PDU extends rfc1157_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1905_PDU($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1157_PDU();
+    parent::__construct();
     $this->asnTagClass = ASN_TAG_CLASS_CONTEXT;
 
     if($errorIndex > MAX_BINDINGS)
       trigger_error('errorIndex must be <= ' . MAX_BINDINGS, E_USER_WARNING);
 
-    $this->requestID = new rfc1902_Integer32($requestID);
-    $this->errorStatus = new rfc1905_ErrorStatus($errorStatus);
-    $this->errorIndex = new rfc1155_Integer($errorIndex);
-    $this->varBindList = new rfc1905_VarBindList($varBindList);
-
-    $this->value = array($this->requestID, $this->errorStatus, $this->errorIndex, $this->varBindList);
+    $this->value = array(new rfc1902_Integer32($requestID), new rfc1905_ErrorStatus($errorStatus),
+                         new rfc1155_Integer($errorIndex), new rfc1905_VarBindList($varBindList));
   }
 
-/*
-#    def decodeContents(self, stream):
-#        """ Decode into a PDU object
-#        """
-#        objectList = Sequence.decodeContents(self, stream)
-#        if len(self.value) != 4:
-#            raise PDUError('Malformed PDU: Incorrect length %d' % len(self.value) )
-#
-#        # Build things with the correct types
-#        for item in objectList[3]:
-#            myVarList.append( VarBind(item[0], item[1]) )
-#
-#        return self.__class__( int(objectList[0]), int(objectList[1]), int(objectList[2]), myVarList)
-*/
+ /**
+  * ToString
+  *
+  * @return string value of this object
+  */
+  public function toString()
+  {
+    $req = $this->value[0]->toString();
+    $err = $this->value[1]->tostring();
+    $ei = $this->value[2]->toString();
+    $vb = $this->value[3]->toString();
+    return "rfc1905_PDU(RequestID:$req,ErrorStatus:$err,ErrorIndex:$ei,VarBind:$vb)";
+  }
 }
 
 /**
@@ -304,22 +299,66 @@ class rfc1905_BulkPDU extends rfc1155_Sequence
   * @param integer $maxRepetitions
   * @param array $varBindList
   */
-  function rfc1905_BulkPDU($requestID=0, $nonRepeaters=0, $maxRepetitions=0, $varBindList=array())
+  public function __construct($requestID=0, $nonRepeaters=0, $maxRepetitions=0, $varBindList=array())
   {
-    parent::rfc1155_Sequence();
+    parent::__construct();
     $this->asnTagClass = ASN_TAG_CLASS_CONTEXT;
 
     if($nonRepeaters > MAX_BINDINGS)
       trigger_error('nonRepeaters must be <= ' . MAX_BINDINGS, E_USER_WARNING);
     if($maxRepetitions > MAX_BINDINGS)
-      trigger_error('nonRepeaters must be <= ' . MAX_BINDINGS, E_USER_WARNING);
+      trigger_error('maxRepetitions must be <= ' . MAX_BINDINGS, E_USER_WARNING);
 
-    $this->requestID = new rfc1902_Integer32($requestID);
-    $this->nonRepeaters = new rfc1155_Integer($nonRepeaters);
-    $this->maxRepetitions = new rfc1155_Integer($maxRepetitions);
-    $this->varBindList = new rfc1905_VarBindList($varBindList);
+    $this->value = array(new rfc1902_Integer32($requestID), new rfc1155_Integer($nonRepeaters),
+                         new rfc1155_Integer($maxRepetitions), new rfc1905_VarBindList($varBindList));
+  }
 
-    $this->value = array($this->requestID, $this->nonRepeaters, $this->maxRepetitions, $this->varBindList);
+ /**
+  * Get/Set Request ID
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function requestID($value=NULL)
+  {
+    if(!is_null($value)) $this->value[0]->value = $value;
+    return $this->value[0]->value;
+  }
+
+ /**
+  * Get/Set Non Repeaters
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function nonRepeaters($value=NULL)
+  {
+    if(!is_null($value)) $this->value[1]->value = $value;
+    return $this->value[1]->value;
+  }
+
+ /**
+  * Get/Set Max Repetitions
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function maxRepetitions($value=NULL)
+  {
+    if(!is_null($value)) $this->value[2]->value = $value;
+    return $this->value[2]->value;
+  }
+
+ /**
+  * Get/Set Var Bind List
+  *
+  * @param rfc1905_VarBindList $value
+  * @return rfc1905_VarBindList
+  */
+  public function varBindList($value=NULL)
+  {
+    if(!is_null($value)) $this->value[3]->value = $value;
+    return $this->value[3]->value;
   }
 
  /**
@@ -330,17 +369,12 @@ class rfc1905_BulkPDU extends rfc1155_Sequence
   * @param string $stream
   * @return rfc1905_BulkPDU
   */
-  function decodeContents($stream) // Decode into a BulkPDU object
+  public function decodeContents($stream) // Decode into a BulkPDU object
   {
-    $objectList = parent::decodeContents($stream);
+    parent::decodeContents($stream);
     if(count($this->value) != 4)
       trigger_error('Malformed BulkPDU: Incorrect length ' . count($this->value), E_USER_WARNING);
-
-    // Build things with the correct types
-    foreach($objectList[3] as $item)
-      $myVarList[] = new VarBind($item[0], $item[1]);
-
-    return new rfc1905_BulkPDU(intval($objectList[0]), intval($objectList[1]), intval($objectList[2]), $myVarList);
+    return $this;
   }
 }
 
@@ -362,9 +396,9 @@ class rfc1905_Get extends rfc1905_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1905_Get($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1905_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_GET;
   }
 }
@@ -387,9 +421,9 @@ class rfc1905_GetNext extends rfc1905_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1905_GetNext($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1905_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_GETNEXT;
   }
 }
@@ -412,9 +446,9 @@ class rfc1905_Response extends rfc1905_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1905_Response($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1905_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_RESPONSE;
   }
 }
@@ -437,9 +471,9 @@ class rfc1905_Set extends rfc1905_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1905_Set($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1905_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_SET;
   }
 }
@@ -462,9 +496,9 @@ class rfc1905_GetBulk extends rfc1905_BulkPDU
   * @param integer $maxRepetitions
   * @param array $varBindList
   */
-  function rfc1905_GetBulk($requestID=0, $nonRepeaters=0, $maxRepetitions=0, $varBindList=array())
+  public function __construct($requestID=0, $nonRepeaters=0, $maxRepetitions=0, $varBindList=array())
   {
-    parent::rfc1905_BulkPDU($requestID, $nonRepeaters, $maxRepetitions, $varBindList);
+    parent::__construct($requestID, $nonRepeaters, $maxRepetitions, $varBindList);
     $this->asnTagNumber = ASN_TAG_GETBULK;
   }
 }
@@ -487,9 +521,9 @@ class rfc1905_Inform extends rfc1905_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1905_Inform($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1905_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_INFORM;
   }
 }
@@ -512,9 +546,9 @@ class rfc1905_Trap extends rfc1905_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1905_Trap($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1905_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_TRAPV2;
   }
 }
@@ -537,9 +571,9 @@ class rfc1905_Report extends rfc1905_PDU
   * @param integer $errorIndex
   * @param array $varBindList
   */
-  function rfc1905_Report($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
+  public function __construct($requestID=0, $errorStatus=0, $errorIndex=0, $varBindList=array())
   {
-    parent::rfc1905_PDU($requestID, $errorStatus, $errorIndex, $varBindList);
+    parent::__construct($requestID, $errorStatus, $errorIndex, $varBindList);
     $this->asnTagNumber = ASN_TAG_REPORT;
   }
 }

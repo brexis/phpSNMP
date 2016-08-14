@@ -38,6 +38,7 @@ require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'rfc3411.php');
 define('SNMP_NOAUTH_NOPRIV', 0);
 define('SNMP_AUTH_NOPRIV',   1);
 define('SNMP_AUTH_PRIV',     3);
+define('SNMP_REPORTABLE',    4);
 
 define('SNMP_SECURITY_ANY',  0);
 define('SNMP_SECURITY_V1',   1);
@@ -52,11 +53,6 @@ define('SNMP_SECURITY_USM',  3);
  */
 class rfc3412_Message extends rfc1155_Sequence
 {
-  var $version;
-  var $header;
-  var $security;
-  var $scoped_pdu;
-
  /**
   * Constructor
   *
@@ -65,16 +61,76 @@ class rfc3412_Message extends rfc1155_Sequence
   * @param rfc3414_USM $security
   * @param rfc3412_ScopedPDU $scopedpdu
   */
-  function rfc3412_Message($version=3, $header=NULL, $security=NULL, $scopedpdu=NULL)
+  public function __construct($version=SNMP_VERSION_3, $header=NULL, $usm_security=NULL, $scopedpdu=NULL)
   {
-    parent::rfc1155_Sequence();
+    parent::__construct();
 
-    $this->version = new rfc1155_Integer($version);
-    $this->header = $header;
-    $this->security = new rfc1155_OctetString($security->encodeContents());
-    $this->scoped_pdu = $scopedpdu;
+    if(is_null($header)) $header = new rfc3412_Header();
+    if(is_null($usm_security)) $usm_security = new rfc3414_USM();
+    if(is_null($scopedpdu)) $scopedpdu = new rfc3412_ScopedPDU();
 
-    $this->value = aray($this->version, $this->header, $this->security, $this->scoped_pdu);
+    $this->value = array(new rfc1155_Integer($version), $header, $usm_security, $scopedpdu);
+  }
+
+ /**
+  * Get/Set Version
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function version($value=NULL)
+  {
+    if(!is_null($value)) $this->value[0] = new rfc1155_Integer($value);
+    return $this->value[0]->value;
+  }
+
+ /**
+  * Get/Set Header
+  *
+  * @param rfc3412_Header $value
+  * @return rfc3412_Header
+  */
+  public function header($value=NULL)
+  {
+    if(!is_null($value)) $this->value[1] = $value;
+    return $this->value[1];
+  }
+
+ /**
+  * Get/Set USM Security
+  *
+  * @param rfc3414_USM $value
+  * @return rfc3414_USM
+  */
+  public function usm_security($value=NULL)
+  {
+    if(!is_null($value)) $this->value[2] = $value;
+    return $this->value[2];
+  }
+
+ /**
+  * Get/Set Scoped PDU
+  *
+  * @param rfc3412_ScopedPDU $value
+  * @return rfc3412_ScopedPDU
+  */
+  public function scopedPDU($value=NULL)
+  {
+    if(!is_null($value)) $this->value[3] = $value;
+    return $this->value[3];
+  }
+
+ /**
+  * Get/Set PDU
+  *
+  * @param rfc1905_PDU $value
+  * @return rfc1905_PDU
+  */
+  public function pdu($value=NULL)
+  {
+    if(!is_null($value))
+      $this->value[3]->pdu($value);
+    return $this->value[3]->pdu();
   }
 
  /**
@@ -85,19 +141,102 @@ class rfc3412_Message extends rfc1155_Sequence
   * @param string $stream
   * @return rfc3412_Message
   */
-  function decode($stream)
+  public function decode($stream)
   {
-    $objectList = parent::decode($stream);
-    if(count($objectList) != 1)
-      trigger_error('Malformed Message: More than one object decoded.', E_USER_WARNING);
-    if(count($objectList[0]->value) != 4)
-      trigger_error('Malformed Message: Incorrect sequence length ' . count($objectList[0]->value), E_USER_WARNING);
+    $usm = $this->usm_security();
 
-    $this->version = $objectList[0]->value[0];
-    $this->header = $objectList[0]->value[1];
-    $this->security = $objectList[0]->value[2];
-    $this->scoped_pdu = $objectList[0]->value[3];
+    $this->value = parent::decode($stream);
+
+    if(count($this->value) != 1)
+      trigger_error('Malformed Message: More than one object decoded.', E_USER_WARNING);
+    $this->value = $this->value[0]->value;
+    if(count($this->value) != 4)
+      trigger_error('Malformed Message: Incorrect sequence length ' . count($this->value), E_USER_WARNING);
+
+    $header = $this->header();
+
+    $header = $this->header(new rfc3412_Header($header->value[0]->value, $header->value[1]->value,
+                                               ord($header->value[2]->value), $header->value[3]->value));
+
+    $usm->decode($this->value[2]->value);
+    $this->usm_security($usm);
+
+    if($header->auth_flag())
+    {
+      // authenticate
+      $usm = $this->usm_security();
+      $auth = $usm->auth();
+      $usm->auth(str_repeat(chr(0), USM_AUTH_KEY_LEN));
+      $usms = new rfc1155_OctetString($usm->encode());
+      $contents = $this->value[0]->encode() . $header->encode() . $usms->encode() . $this->value[3]->encode();
+      $packet = $this->encodeIdentifier() . $this->encodeLength(strlen($contents)) . $contents;
+      $hmac = substr(HMAC($packet, $usm->generate_key('auth'), $usm->hash_function), 0, USM_AUTH_KEY_LEN);
+      if($hmac != $auth)
+      {
+        trigger_error('Message is not authentic!', E_USER_WARNING);
+        $this->value[3] = new rfc3412_ScopedPDU();
+        return $this;
+      }
+
+      if($header->priv_flag())
+      {
+        $clear = $usm->decrypt($this->value[3]->value);
+        $spdu = new rfc3412_ScopedPDU();
+        list($len, $c) = $spdu->decodeLength(substr($clear, 1));
+        $len += strlen($clear) - strlen($c);
+        $clear = substr($clear, 0, $len);
+        $this->value[3] = $spdu->decode($clear);
+      }
+      else
+        $this->value[3] = new rfc3412_ScopedPDU($this->value[3]->value[0]->value, $this->value[3]->value[1]->value, $this->value[3]->value[2]);
+    }
+    else
+      $this->value[3] = new rfc3412_ScopedPDU($this->value[3]->value[0]->value, $this->value[3]->value[1]->value, $this->value[3]->value[2]);
+
     return $this;
+  }
+
+ /**
+  * Encode Contents
+  *
+  * @return string
+  */
+  public function encodeContents()
+  {
+    $version = $this->value[0];
+    $header = $this->header();
+    $usm = $this->usm_security();
+    $spdu = $this->scopedPDU();
+
+    if($usm->engineID() == '')
+    {
+      $header->flags(SNMP_REPORTABLE);
+      $usm = new rfc3414_USM();
+      $pdu = $spdu->pdu();
+      $pdu->varBindList(array());
+      $spdu = new rfc3412_ScopedPDU('', '', $pdu);
+    }
+
+    $spdu = $spdu->encode();
+
+    if($header->auth_flag())
+    {
+      if($header->priv_flag())
+      {
+        $spdu = new rfc1155_OctetString($usm->encrypt($spdu));
+        $spdu = $spdu->encode();
+      }
+
+      $usm->auth(str_repeat(chr(0), USM_AUTH_KEY_LEN));
+      $usms = new rfc1155_OctetString($usm->encode());
+      $contents = $version->encode() . $header->encode() . $usms->encode() . $spdu;
+      $packet = $this->encodeIdentifier() . $this->encodeLength(strlen($contents)) . $contents;
+      $hmac = HMAC($packet, $usm->generate_key('auth'), $usm->hash_function);
+      $usm->auth($hmac);
+    }
+
+    $usms = new rfc1155_OctetString($usm->encode());
+    return $version->encode() . $header->encode() . $usms->encode() . $spdu;
   }
 }
 
@@ -109,28 +248,146 @@ class rfc3412_Message extends rfc1155_Sequence
  */
 class rfc3412_Header extends rfc1155_Sequence
 {
-  var $msgid;
-  var $maxsize;
-  var $flags;
-  var $security;
-
  /**
   * Constructor
   *
   * @param integer $msgid
-  * @param string $flags
-  * @param string $security
+  * @param string $flags noAuthNoPriv(0), authNoPriv(1), authPriv(3)
+  * @param string $security any(0), v1(1), v2c(2), usm(3)
   */
-  function rfc3412_Header($msgid, $flags=SNMP_NOAUTH_NOPRIV, $security=SNMP_SECURITY_USM)
+  public function __construct($msgid=0, $max_size=65507, $flags=SNMP_NOAUTH_NOPRIV, $security=SNMP_SECURITY_USM)
   {
-    parent::rfc1155_Sequence();
+    parent::__construct();
+    $this->value = array(new rfc1155_Integer($msgid), new rfc1155_Integer($max_size),
+                         new rfc1155_OctetString(chr($flags)), new rfc1155_Integer($security));
+  }
 
-    $this->msgid = new rfc1155_Integer($msgid);
-    $this->maxsize = new rfc1155_Integer(65535); // must be 484..2147483647
-    $this->flags = new rfc1155_OctetString($flags); // noAuthNoPriv(0), authNoPriv(1), authPriv(3)
-    $this->security = new rfc1155_Integer($security); // any(0), v1(1), v2c(2), usm(3)
+ /**
+  * to String
+  *
+  * @return string
+  */
+  public function toString()
+  {
+    $flags = array();
+    $f = ord($this->value[2]->value);
+    if($f & 1) $flags[] = 'AUTH';
+    if($f & 2) $flags[] = 'PRIV';
+    if($f & 4) $flags[] = 'REPORTABLE';
+    $flags = join('|', $flags) . "($f)";
 
-    $this->value = array($this->msgid, $this->maxsize, $this->flags, $this->security);
+    switch($this->value[3]->value)
+    {
+      case SNMP_SECURITY_ANY: $security = 'ANY'; break;
+      case SNMP_SECURITY_V1: $security = 'V1'; break;
+      case SNMP_SECURITY_V2C: $security = 'V2C'; break;
+      case SNMP_SECURITY_USM: $security = 'USM'; break;
+      default: $this->value[3]->value;
+    }
+
+    return get_class($this) . "(MsgID:{$this->value[0]->value},max_size:{$this->value[1]->value},flags:$flags,security:$security)";
+  }
+
+ /**
+  * Get/Set Message ID
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function msgid($value=NULL)
+  {
+    if(!is_null($value)) $this->value[0]->value = $value;
+    return $this->value[0]->value;
+  }
+
+ /**
+  * Get/Set Max Message Size
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function maxsize($value=NULL)
+  {
+    if(!is_null($value)) $this->value[1]->value = $value;
+    return $this->value[1]->value;
+  }
+
+ /**
+  * Get/Set Message Flags
+  *
+  * @param integer $value
+  * @return integer
+  */
+  public function flags($value=NULL)
+  {
+    if(!is_null($value)) $this->value[2]->value = chr($value);
+    return ord($this->value[2]->value);
+  }
+
+ /**
+  * Get/Set Auth Flag
+  *
+  * @param boolean $value
+  * @return boolean
+  */
+  public function auth_flag($value=NULL)
+  {
+    if(!is_null($value))
+    {
+      if($value)
+        $this->value[2]->value |= chr(1); // set SNMP_AUTH;
+      else
+        $this->value[2]->value &= chr(254); // unset SNMP_AUTH
+    }
+    return (($this->value[2]->value & chr(1)) == chr(1)) ? true : false;
+  }
+
+ /**
+  * Get/Set Priv Flag
+  *
+  * @param boolean $value
+  * @return boolean
+  */
+  public function priv_flag($value=NULL)
+  {
+    if(!is_null($value))
+    {
+      if($value)
+        $this->value[2]->value |= chr(3); // set SNMP_AUTH_PRIV;
+      else
+        $this->value[2]->value &= chr(253); // unset PRIV
+    }
+    return (($this->value[2]->value & chr(2)) == chr(2)) ? true : false;
+  }
+
+ /**
+  * Get/Set Reportable Flag
+  *
+  * @param boolean $value
+  * @return boolean
+  */
+  public function reportable_flag($value=NULL)
+  {
+    if(!is_null($value))
+    {
+      if($value)
+        $this->value[2]->value |= chr(4); // set SNMP_REPORTABLE;
+      else
+        $this->value[2]->value &= chr(251); // unset SNMP_REPORTABLE
+    }
+    return ($this->value[2]->value & chr(4) == chr(4)) ? true : false;
+  }
+
+ /**
+  * Get/Set Security Mode
+  *
+  * @param integer $value SNMP_SECURITY_ANY, SNMP_SECURITY_V1, SNMP_SECURITY_V2C, or SNMP_SECURITY_USM
+  * @return integer
+  */
+  public function security($value=NULL)
+  {
+    if(!is_null($value)) $this->value[3]->value = $value;
+    return $this->value[3]->value;
   }
 
  /**
@@ -141,18 +398,13 @@ class rfc3412_Header extends rfc1155_Sequence
   * @param string $stream
   * @return rfc3412_Header
   */
-  function decode($stream)
+  public function decode($stream)
   {
-    $objectList = parent::decode($stream);
-    if(count($objectList) != 1)
+    parent::decode($stream);
+    if(count($this->value) != 1)
       trigger_error('Malformed Message: More than one object decoded.', E_USER_WARNING);
-    if(count($objectList[0]->value) != 4)
-      trigger_error('Malformed Message: Incorrect sequence length ' . count($objectList[0]->value), E_USER_WARNING);
-
-    $this->id = $objectList[0]->value[0];
-    $this->maxsize = $objectList[0]->value[1];
-    $this->flags = $objectList[0]->value[2];
-    $this->security = $objectList[0]->value[3];
+    if(count($this->value[0]->value) != 4)
+      trigger_error('Malformed Message: Incorrect sequence length ' . count($this->value[0]->value), E_USER_WARNING);
     return $this;
   }
 }
@@ -165,26 +417,68 @@ class rfc3412_Header extends rfc1155_Sequence
  */
 class rfc3412_ScopedPDU extends rfc1155_Sequence
 {
-  var $id;
-  var $name;
-  var $data;
-
  /**
   * Constructor
   *
   * @param string $engineid
   * @param string $name
-  * @param rfc1905_PDU $data
+  * @param rfc1905_PDU $pdu
   */
-  function rfc3412_ScopedPDU($engineid, $name, $data)
+  public function __construct($engineid='', $name='', $pdu=NULL)
   {
-    parent::rfc1155_Sequence();
+    parent::__construct();
+    if(is_null($pdu)) $pdu = new rfc1905_PDU();
+    $this->value = array(new rfc3411_EngineID($engineid), new rfc1155_OctetString($name), $pdu);
+  }
 
-    $this->id = new rfc3411_EngineID($engineid);
-    $this->name = new rfc1155_OctetString($name);
-    $this->data = $data;
+ /**
+  * Get/Set Context Engine ID
+  *
+  * @param string $value
+  * @return string
+  */
+  public function engineID($value=NULL)
+  {
+    if(!is_null($value)) $this->value[0]->value = $value;
+    return $this->value[0]->value;
+  }
 
-    $this->value = array($this->id, $this->name, $this->data);
+ /**
+  * Get/Set Context Name
+  *
+  * @param string $value
+  * @return string
+  */
+  public function name($value=NULL)
+  {
+    if(!is_null($value)) $this->value[1]->value = $value;
+    return $this->value[1]->value;
+  }
+
+ /**
+  * Get/Set PDU
+  *
+  * @param rfc1905_PDU $value
+  * @return rfc1905_PDU
+  */
+  public function pdu($value=NULL)
+  {
+    if(!is_null($value)) $this->value[2] = $value;
+    return $this->value[2];
+  }
+
+ /**
+  * To String
+  *
+  * @return string
+  */
+  public function toString()
+  {
+    $eid = $this->value[0]->toString();
+    $name = $this->value[1]->toString();
+    $pdu = $this->pdu();
+    $pdu = $pdu->toString();
+    return get_class($this) . "(engineID:$eid,Name:$name,pdu:$pdu)";
   }
 
  /**
@@ -195,17 +489,17 @@ class rfc3412_ScopedPDU extends rfc1155_Sequence
   * @param string $stream
   * @return rfc3412_ScopedPDU
   */
-  function decode($stream)
+  public function decode($stream)
   {
-    $objectList = parent::decode($stream);
-    if(count($objectList) != 1)
+    $this->value = parent::decode($stream);
+    if(count($this->value) != 1)
       trigger_error('Malformed Message: More than one object decoded.', E_USER_WARNING);
-    if(count($objectList[0]->value) != 3)
-      trigger_error('Malformed Message: Incorrect sequence length ' . count($objectList[0]->value), E_USER_WARNING);
+    $this->value = $this->value[0]->value;
+    if(count($this->value) != 3)
+      trigger_error('Malformed Message: Incorrect sequence length ' . count($this->value), E_USER_WARNING);
 
-    $this->id = $objectList[0]->value[0];
-    $this->name = $objectList[0]->value[1];
-    $this->data = $objectList[0]->value[2];
+    $this->value[0] = new rfc3411_EngineID($this->value[0]->value);
+
     return $this;
   }
 }
