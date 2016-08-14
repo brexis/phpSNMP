@@ -235,8 +235,6 @@ class rfc1155_Asn1Object
       $stream = substr($stream, $length);
 
       global $ASN_TAG_DICT;
-      var_dump($tag);
-      echo '<br>';
       if(isset($ASN_TAG_DICT[$tag]))
       {
         $decoder = $ASN_TAG_DICT[$tag];
