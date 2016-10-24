@@ -173,8 +173,12 @@ class rfc3412_Message extends rfc1155_Sequence
       $hmac = substr(HMAC($packet, $usm->generate_key('auth'), $usm->hash_function), 0, USM_AUTH_KEY_LEN);
       if($hmac != $auth)
       {
-        trigger_error('Message is not authentic!', E_USER_WARNING);
-        $this->value[3] = new rfc3412_ScopedPDU();
+        $oidmsg = '';
+        if (!empty($this->value[3]->value[2]->value[3]->value[0]->value[0]->value) && is_array($this->value[3]->value[2]->value[3]->value[0]->value[0]->value))
+          $oidmsg = ' Possible OID: ' . implode('.', $this->value[3]->value[2]->value[3]->value[0]->value[0]->value);
+
+        trigger_error('Message is not authentic!'.$oidmsg, E_USER_WARNING);
+        $this->value[3] = new rfc3412_ScopedPDU($this->value[3]->value[0]->value, $this->value[3]->value[1]->value, $this->value[3]->value[2]);
         return $this;
       }
 
